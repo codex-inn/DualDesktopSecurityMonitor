@@ -6,6 +6,33 @@ Desktop A creates local system inventory reports and can send a harmless test al
 
 > **Status:** Core prototype files and unit tests are committed. A separate summary sender can send only aggregate counts from the local report; it does not upload process names or startup commands. End-to-end operation and Windows compilation still need testing on your computers.
 
+
+
+## Quick demonstration on one computer
+
+You can demonstrate the dashboard without a second PC, Tailscale, or C++ build:
+
+1. Install Python 3.10 or newer.
+2. Download this repository ZIP from GitHub and extract it.
+3. Open PowerShell in the extracted project folder.
+4. Run:
+
+   ```powershell
+   python .\run_local_demo.py
+   ```
+
+5. A browser opens to a dashboard on `127.0.0.1` and one harmless synthetic alert is sent automatically. Keep the PowerShell window open during the demo; press `Ctrl+C` to stop it.
+
+The local demo binds only to loopback (`127.0.0.1`), uses a randomly generated in-memory token, and does not require the two-computer network setup. Events are appended to `receiver/events.jsonl` in the extracted project folder. The local demo is for demonstration and testing, not a public web deployment.
+
+To run the automated Python tests from the project folder:
+
+```powershell
+python -m unittest discover -s tests -v
+```
+
+GitHub Actions also runs these Python tests on pushes and pull requests. A green workflow confirms the Python tests passed in GitHub's test environment; it does not replace a Windows C++ build or a real two-computer network test.
+
 ## Project at a glance
 
 | Component | Role | Status |
@@ -16,7 +43,7 @@ Desktop A creates local system inventory reports and can send a harmless test al
 | Browser dashboard | Shows recent received events and refreshes every five seconds | Implemented |
 | Python test sender | Sends one synthetic connectivity-test event | Implemented |
 | Sensor-to-alert integration | Automatically sends selected sensor findings | Not implemented |
-| Durable replay protection | Remembers event IDs across receiver restarts | Not implemented |
+| Durable replay protection | Remembers event IDs across receiver restarts using the local archive | Implemented; tests added |
 
 ## Repository structure
 
@@ -120,8 +147,10 @@ Choose menu option `1` to create `security_report.txt`, `2` for the console-only
 ## Known limitations / next development tasks
 
 - [ ] Test receiver and sender end-to-end on the two target Windows computers.
+- [x] Add a loopback-only local demo that sends a synthetic alert.
+- [x] Add receiver HTTP tests and a GitHub Actions Python test workflow.
 - [ ] Connect selected local sensor findings to the alert sender.
-- [ ] Persist replay protection across receiver restarts.
+- [x] Persist replay protection across receiver restarts.
 - [ ] Add tighter receiver access controls and production-grade transport/security hardening.
 - [ ] Compile and test the C++ sensor on Windows.
 
