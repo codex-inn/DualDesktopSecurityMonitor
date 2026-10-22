@@ -23,7 +23,15 @@ The receiver and synthetic sender are implemented for devices you own or are aut
 4. Open the dashboard address printed by the receiver in a browser on Desktop B.
 5. Keep the receiver console visible and stop it with Ctrl+C when finished.
 
-## Send a test from Desktop A
+## Send a counts-only report summary from Desktop A
+
+After creating `security_report.txt` with the C++ sensor, run:
+
+    python .\sender\send_report_summary.py --report .\security_report.txt --receiver http://YOUR_TAILSCALE_IP:8787
+
+This sends the report timestamp and counts of process/startup entries only. It does not transmit process names, process IDs, or registry command values.
+
+## Send a synthetic test from Desktop A
 
 Set the same DDSM_TOKEN environment variable in Desktop A's PowerShell session, then run:
 
@@ -37,5 +45,5 @@ The receiver validates the bearer token, JSON content type, body size, required 
 - Bind only to Desktop B's Tailscale address and keep the tailnet limited to trusted devices. Add restrictive Tailscale ACLs and Windows Firewall rules where possible.
 - The token is a shared secret. Do not paste it into GitHub, commit it, or send it through public channels.
 - Use synthetic events first. Do not send passwords, private messages, or unnecessary personal information.
-- Event IDs are deduplicated in memory; this is not durable replay protection and resets when the receiver restarts.
+- Event IDs are restored from the JSONL event archive at startup so previously accepted IDs can be rejected after a restart. Keep the archive intact to retain this protection.
 - No stealth or system-wide keyboard capture is implemented.
