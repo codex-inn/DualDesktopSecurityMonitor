@@ -30,6 +30,17 @@ def summarize_report(text: str) -> dict:
     }
 
 
+def read_report_text(path: Path) -> str:
+    """Read common Windows text encodings without sending the original file."""
+    raw = path.read_bytes()
+    for encoding in ("utf-8-sig", "utf-16", "cp1252"):
+        try:
+            return raw.decode(encoding)
+        except UnicodeDecodeError:
+            continue
+    return raw.decode("utf-8", errors="replace")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="Send counts from a local DDSM report; report contents stay on this computer."
@@ -42,7 +53,7 @@ def main() -> int:
     if len(token) < 32:
         raise SystemExit("Set DDSM_TOKEN to the same random secret used on Desktop B.")
     try:
-        summary = summarize_report(Path(args.report).read_text(encoding="utf-8-sig", errors="replace"))
+        summary = summarize_report(read_report_text(Path(args.report)))
     except (OSError, ValueError) as exc:
         print(f"Cannot summarize report: {exc}", file=sys.stderr)
         return 2
