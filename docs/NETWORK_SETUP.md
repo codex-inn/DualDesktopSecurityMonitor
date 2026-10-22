@@ -1,22 +1,41 @@
-# Two-desktop network plan
+# Two-desktop network setup
 
-This document describes the intended setup. Network transport is not implemented in the current starter.
+The receiver and synthetic sender are implemented for devices you own or are authorized to administer.
 
 ## Topology
 
-- Desktop A: Windows 10 local sensor.
-- Desktop B: Windows 11 intended receiver/dashboard.
-- Both devices join the same authorized Tailscale tailnet, even when using different internet connections.
-- Do not configure router port forwarding or expose a listener to the public internet.
+- Desktop A: Windows 10, local sensor and test sender.
+- Desktop B: Windows 11, dashboard and event receiver.
+- Both devices join the same authorized Tailscale tailnet, even on different internet connections.
+- The receiver binds to Desktop B's Tailscale IP. Do not configure router port forwarding or expose the listener to the public internet.
 
-## Before enabling a receiver
+## Start Desktop B
 
-- Bind to the Tailscale interface where practical.
-- Authenticate both ends; a private IP address alone is not authentication.
-- Encrypt traffic in transit and store credentials outside the repository.
-- Validate message size, type, and schema; reject unexpected input.
-- Add timestamps and unique event IDs to help detect replayed messages.
-- Log connection attempts and errors without recording secrets.
-- Use synthetic test alerts first and verify that only Desktop B receives them.
+1. Install Tailscale and Python 3.10+.
+2. Find Desktop B's Tailscale IPv4 address.
+3. Generate a random token locally in PowerShell; never store it in the repository:
 
-Never commit passwords, API keys, private certificates, or Tailscale auth keys to GitHub. Do not implement stealth or system-wide keyboard capture.
+       $bytes = New-Object byte[] 32
+       [System.Security.Cryptography.RandomNumberGenerator]::Fill($bytes)
+       $env:DDSM_TOKEN = [Convert]::ToBase64String($bytes)
+       python .\receiver\receiver.py --host YOUR_TAILSCALE_IP --port 8787
+
+4. Open the dashboard address printed by the receiver in a browser on Desktop B.
+5. Keep the receiver console visible and stop it with Ctrl+C when finished.
+
+## Send a test from Desktop A
+
+Set the same DDSM_TOKEN environment variable in Desktop A's PowerShell session, then run:
+
+    python .\sender\send_test_alert.py --receiver http://YOUR_TAILSCALE_IP:8787
+
+The receiver validates the bearer token, JSON content type, body size, required fields, severity, and event ID. Accepted events are appended to receiver/events.jsonl and displayed in the dashboard.
+
+## Security notes
+
+- Tailscale's encrypted WireGuard tunnel protects traffic between authorized tailnet devices. The application uses bearer-token authentication; HTTP is not independent end-to-end TLS.
+- Bind only to Desktop B's Tailscale address and keep the tailnet limited to trusted devices. Add restrictive Tailscale ACLs and Windows Firewall rules where possible.
+- The token is a shared secret. Do not paste it into GitHub, commit it, or send it through public channels.
+- Use synthetic events first. Do not send passwords, private messages, or unnecessary personal information.
+- Event IDs are deduplicated in memory; this is not durable replay protection and resets when the receiver restarts.
+- No stealth or system-wide keyboard capture is implemented.
