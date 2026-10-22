@@ -11,6 +11,24 @@ EVENTS_FILE = Path(__file__).resolve().parent / "events.jsonl"
 lock = threading.Lock()
 seen_ids = set()
 
+
+def load_seen_ids():
+    """Restore event IDs from the append-only event archive to reject replay after restart."""
+    if not EVENTS_FILE.exists():
+        return
+    try:
+        with EVENTS_FILE.open("r", encoding="utf-8") as archive:
+            for line in archive:
+                try:
+                    event = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                event_id = event.get("event_id") if isinstance(event, dict) else None
+                if isinstance(event_id, str) and event_id:
+                    seen_ids.add(event_id)
+    except OSError as exc:
+        raise SystemExit(f"Cannot read event archive {EVENTS_FILE}: {exc}")
+
 DASHBOARD = """<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>DualDesktopSecurityMonitor</title><style>
 :root{color-scheme:dark;font:16px system-ui,sans-serif;background:#0b1220;color:#e8eef8}body{max-width:1050px;margin:0 auto;padding:24px}
@@ -82,7 +100,6 @@ class Handler(BaseHTTPRequestHandler):
         with lock:
             if eid in seen_ids: self.send_json(409,{"error":"duplicate event_id"});return
             seen_ids.add(eid)
-            if len(seen_ids)>10000: seen_ids.clear();seen_ids.add(eid)
             event={"event_id":eid,"received_at":time.strftime("%Y-%m-%d %H:%M:%S",time.localtime()),
                    "source":source,"event_type":etype,"severity":severity,"details":details}
             try:
@@ -99,6 +116,7 @@ def main():
     token=os.environ.get("DDSM_TOKEN","")
     if len(token)<32: raise SystemExit("Set DDSM_TOKEN to a random secret of at least 32 characters.")
     if not 1<=args.port<=65535: raise SystemExit("Port must be between 1 and 65535.")
+    load_seen_ids()
     server=ThreadingHTTPServer((args.host,args.port),Handler);server.auth_token=token
     print("Dashboard listening on http://%s:%s/"%(args.host,args.port))
     print("Bind to Desktop B's Tailscale IP only. Tailscale encrypts tailnet traffic.")
