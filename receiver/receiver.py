@@ -77,7 +77,7 @@ class Handler(BaseHTTPRequestHandler):
         severity,details=p.get("severity","info"),p.get("details","")
         if not all(isinstance(v,str) and 1<=len(v)<=n for v,n in [(eid,80),(source,80),(etype,100)]):
             self.send_json(400,{"error":"event_id, source, and event_type must be short strings"});return
-        if severity not in ALLOWED_SEVERITIES: self.send_json(400,{"error":"invalid severity"});return
+        if not isinstance(severity,str) or severity not in ALLOWED_SEVERITIES: self.send_json(400,{"error":"invalid severity"});return
         if not isinstance(details,str) or len(details)>2000: self.send_json(400,{"error":"details must be a string of at most 2000 characters"});return
         with lock:
             if eid in seen_ids: self.send_json(409,{"error":"duplicate event_id"});return
